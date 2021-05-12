@@ -1,0 +1,10 @@
+apm-server:
+  host: 0.0.0.0:8200
+  secret_token: "${ELASTIC_APM_SECRET_TOKEN}"
+  read_timeout: 45s
+
+output:
+  elasticsearch:
+    hosts: elasticsearch:9200
+    username: kibanAdmin
+    password: "${KIBANA_ADMIN_PASSWORD}"

@@ -1,0 +1,93 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: es-hq
+  namespace: elasticsearch
+  labels:
+    component: elasticsearch
+    role: hq
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: elasticsearch
+        role: hq
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: agentpool
+                operator: In
+                values:
+                - monitor
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: role
+                  operator: In
+                  values:
+                  - hq
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: es-lighttpd
+        imagePullPolicy: Always
+        image: akhilrajmailbox/elasticsearch:lighttpd
+        resources:
+          requests:
+            cpu: 100m
+          limits:
+            cpu: 500m
+        ports:
+        - containerPort: 80
+          name: http
+        args:
+        - "-c"
+        - "source /docker_entrypoint.sh"
+        command: 
+        - /bin/bash
+        readinessProbe:
+          exec:
+            command:
+            - "/bin/bash"
+            - "-c"
+            - "ps -ef | grep 'lighttpd' | grep -v grep"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        env:
+        - name: BASIC_AUTH_USER
+          valueFrom:
+            configMapKeyRef:
+                name: es-hq-cm
+                key: BASIC_AUTH_USER
+
+        - name: BASIC_AUTH_PASS
+          valueFrom:
+            configMapKeyRef:
+                name: es-hq-cm
+                key: BASIC_AUTH_PASS
+
+        - name: PROXY_PORT
+          valueFrom:
+            configMapKeyRef:
+                name: es-hq-cm
+                key: PROXY_PORT
+      - name: es-hq
+        imagePullPolicy: Always
+        image: akhilrajmailbox/elasticsearch:hq-release-v3.5.4
+        # image: elastichq/elasticsearch-hq:release-v3.4.0
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: 100m
+          limits:
+            memory: "512Mi"
+            cpu: 500m
+        ports:
+        - containerPort: 5000
+          name: http

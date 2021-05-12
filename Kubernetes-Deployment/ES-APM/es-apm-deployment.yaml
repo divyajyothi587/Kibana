@@ -1,0 +1,77 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: es-apm
+  namespace: elasticsearch
+  labels:
+    component: elasticsearch
+    role: apm
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        component: elasticsearch
+        role: apm
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: agentpool
+                operator: In
+                values:
+                - monitor
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: role
+                  operator: In
+                  values:
+                  - apm
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - args:
+        - "-c"
+        - "/usr/share/apm-server/apm-server -c /usr/share/apm-server/apm-server.yml -e"
+        command: 
+        - /bin/bash
+        name: es-apm
+        imagePullPolicy: Always
+        image: akhilrajmailbox/elasticsearch:apm-server-6.8.0
+        # image: elastic/apm-server:6.6.1
+        volumeMounts:
+        - name: apm-server
+          mountPath: /usr/share/apm-server/apm-server.yml
+          subPath: apm-server.yml
+          readOnly: true
+        env:
+        - name : ELASTIC_APM_SECRET_TOKEN
+          valueFrom:
+            configMapKeyRef:
+                name: es-auth-cm
+                key: ELASTIC_APM_SECRET_TOKEN
+
+        - name : KIBANA_ADMIN_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+                name: es-auth-cm
+                key: KIBANA_ADMIN_PASSWORD
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: 100m
+          limits:
+            memory: "1Gi"
+            cpu: 1
+        ports:
+        - containerPort: 8200
+          name: http
+      volumes:
+      - name: apm-server
+        configMap:
+          name: apm-server-cm

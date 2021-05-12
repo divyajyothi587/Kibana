@@ -1,0 +1,38 @@
+#=========================== Filebeat prospectors =============================
+filebeat.prospectors:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/es-push.log
+
+#============================= Filebeat modules ===============================
+filebeat.config.modules:
+  # path: ${path.config}/modules.d/*.yml
+  reload.enabled: false
+
+#==================== Elasticsearch template setting ==========================
+setup.template.settings:
+  index.number_of_shards: 2
+  index.number_of_replicas: 2
+  # index.codec: best_compression
+  # _source.enabled: false
+setup.template.name: "${ES_INDEX_NAME}"
+setup.template.pattern: "${ES_INDEX_NAME}-*"
+
+#================================ General =====================================
+name: "${ES_REFERENCE_NAME}"
+tags: ["${ES_TAG_1}", "${ES_TAG_2}"]
+
+#================================ Outputs =====================================
+
+# Configure what output to use when sending the data collected by the beat.
+
+#-------------------------- Elasticsearch output ------------------------------
+output.elasticsearch:
+  hosts: ["${ES_HOST}:${ES_PORT}"]
+  index: "${ES_INDEX_NAME}-%{+yyyy.MM.dd}"
+  # Optional protocol and basic auth credentials.
+  # protocol: "https"
+  username: "${ES_USERNAME}"
+  password: "${ES_PASSWORD}"
+  

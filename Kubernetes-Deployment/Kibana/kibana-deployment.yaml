@@ -1,0 +1,71 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: es-kibana
+  namespace: elasticsearch
+  labels:
+    component: elasticsearch
+    role: kibana
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: elasticsearch
+        role: kibana
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: agentpool
+                operator: In
+                values:
+                - monitor
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: role
+                  operator: In
+                  values:
+                  - kibana
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: es-kibana
+        imagePullPolicy: Always
+        image: akhilrajmailbox/elasticsearch:kibana-6.8.0
+        # image: docker.elastic.co/kibana/kibana-oss:6.2.2
+        volumeMounts:
+        - name: kibana-config
+          mountPath: /opt/kibana/config/kibana.yml
+          subPath: kibana.yml
+          readOnly: true
+        env:
+        - name : KIBANA_ADMIN_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+                name: es-auth-cm
+                key: KIBANA_ADMIN_PASSWORD
+
+        - name: CLUSTER_NAME
+          value: my-es
+        - name: ELASTICSEARCH_URL
+          value: http://elasticsearch:9200
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: 100m
+          limits:
+            memory: "1Gi"
+            cpu: 500m
+        ports:
+        - containerPort: 5601
+          name: http
+      volumes:
+      - name: kibana-config
+        configMap:
+          name: kibana-config-cm

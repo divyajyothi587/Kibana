@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: es-auth-cm
+  namespace: elasticsearch
+data:
+  AUTH_CONFIG: "true"
+  AZURE_REPOSITORY_CONFIG: "true"
+  # AZURE_REPOSITORY_ACCOUNT_KEY: ""
+  # AZURE_REPOSITORY_ACCOUNT_NAME: ""
+  # GCS_REPOSITORY_CONFIG: ""
+  # S3_REPOSITORY_CONFIG: ""
+  # S3_ACCESS_KEY: ""
+  # S3_SECRET_KEY: ""
+  ELASTIC_APM_SECRET_TOKEN: ""
+  KIBANA_ADMIN_PASSWORD: ""
+  KIBANA_RO_PASSWORD: ""
+  PUSHLOG_PASSWORD: ""

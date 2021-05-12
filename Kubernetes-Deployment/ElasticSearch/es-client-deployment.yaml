@@ -1,0 +1,131 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: es-client
+  namespace: elasticsearch
+  labels:
+    component: elasticsearch
+    role: client
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        component: elasticsearch
+        role: client
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: agentpool
+                operator: In
+                values:
+                - monitor
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: role
+                  operator: In
+                  values:
+                  - client
+              topologyKey: "kubernetes.io/hostname"
+      initContainers:
+      - name: init-sysctl
+        image: busybox:1.27.2
+        command:
+        - sysctl
+        - -w
+        - vm.max_map_count=262144
+        securityContext:
+          privileged: true
+      containers:
+      - name: es-client
+        imagePullPolicy: Always
+        image: akhilrajmailbox/elasticsearch:elasticsearch-6.8.0
+        # image: quay.io/pires/docker-elasticsearch-kubernetes:6.2.4
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+
+        - name : AUTH_CONFIG
+          valueFrom:
+            configMapKeyRef:
+                name: es-auth-cm
+                key: AUTH_CONFIG
+
+        - name : AZURE_REPOSITORY_CONFIG
+          valueFrom:
+            configMapKeyRef:
+                name: es-auth-cm
+                key: AZURE_REPOSITORY_CONFIG
+
+        - name : KIBANA_ADMIN_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+                name: es-auth-cm
+                key: KIBANA_ADMIN_PASSWORD
+
+        - name : KIBANA_RO_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+                name: es-auth-cm
+                key: KIBANA_RO_PASSWORD
+
+        - name : PUSHLOG_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+                name: es-auth-cm
+                key: PUSHLOG_PASSWORD
+
+        - name: AZURE_REPOSITORY_ACCOUNT_NAME
+          value: ""
+
+        - name: AZURE_REPOSITORY_ACCOUNT_KEY
+          value: ""
+
+        - name: CLUSTER_NAME
+          value: my-es
+        - name: NODE_MASTER
+          value: "false"
+        - name: NODE_DATA
+          value: "false"
+        - name: HTTP_ENABLE
+          value: "true"
+        - name: ES_JAVA_OPTS
+          value: "-Xms1G -Xmx1G"
+        - name: NETWORK_HOST
+          value: _site_,_lo_
+        - name: PROCESSORS
+          valueFrom:
+            resourceFieldRef:
+              resource: limits.cpu
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: 500m
+          limits:
+            memory: "2Gi"
+            cpu: 1
+        ports:
+        - containerPort: 9200
+          name: http
+        - containerPort: 9300
+          name: transport
+        volumeMounts:
+        - name: storage
+          mountPath: /data
+      volumes:
+          - emptyDir:
+              medium: ""
+            name: storage
